@@ -11,6 +11,10 @@
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Route::get('/', function () {
+//     return view('welcome');
+// });
+
+Route::get('/', 'TopController@index')->name('index');
+Route::get('/file/upload', 'FileController@upload')->name('file.upload');
+Route::get('/file/convert', 'FileController@convert')->name('file.convert');
