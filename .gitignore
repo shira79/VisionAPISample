@@ -4,6 +4,9 @@
 /storage/*.key
 /vendor
 /File/*
+##  ファイルの置き場所
+/key/*
+## アクセスキーの置き場
 .env
 .env.backup
 .phpunit.result.cache
