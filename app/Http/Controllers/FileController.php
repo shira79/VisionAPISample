@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Estate;
 
 use Illuminate\Support\Str;
 use Google\Cloud\Storage\StorageClient;
@@ -21,6 +22,8 @@ use Google\Cloud\Vision\V1\OutputConfig;
 
 class FileController extends Controller
 {
+    public $bucketName = 'realestate-info';
+    public $bucketPrefix =  'outputs2/';
 
     /**
      * pdfファイルをOCRにかけて、データをGCSに配置する
@@ -72,33 +75,71 @@ class FileController extends Controller
     /**
      * GCSに置いてあるファイルを読み込む
      */
-    public function read(){
+    // public function read()
+    // {
+    //     $objects = $this->getObjects();
 
-        $bucketName =  'realestate-info';
-        $prefix =  'outputs2/';
-        $storage = new StorageClient();
-        $bucket = $storage->bucket($bucketName);
-        $options = ['prefix' => $prefix];
-        $objects = $bucket->objects($options);
+    //     foreach($objects as $object){
+    //         $this->getPlaneText($object);
+    //     }
 
-        # list objects with the given prefix.
-        // print('Output files:' . PHP_EOL);
-        // foreach ($objects as $object) {
-            // print($object->name() . PHP_EOL);
-        // }
+    // }
 
-        foreach($objects as $object){
+    public function insert()
+    {
+        $objects = $this->getObjects();
 
-            $jsonString = $object->downloadAsString();
-            $batch = new AnnotateFileResponse();
-            $batch->mergeFromJsonString($jsonString);
-
-            foreach ($batch->getResponses() as $response) {
-                $annotation = $response->getFullTextAnnotation();
-                dump($annotation->getText());
-            }
+        foreach ($objects as $obj){
+            // $object->name();
+            $this->storeInfo($obj);
         }
 
-
     }
+
+    private function getBucket()
+    {
+        $storage = new StorageClient();
+        return $storage->bucket($this->bucketName);
+    }
+
+    private function getObjects()
+    {
+        $bucket =  $this->getBucket();
+        $options = ['prefix' => $this->bucketPrefix];
+        return $bucket->objects($options);
+    }
+
+    private function storeInfo($object)
+    {
+        $jsonString = $object->downloadAsString();
+        $firstBatch = new AnnotateFileResponse();
+        $firstBatch->mergeFromJsonString($jsonString);
+
+        foreach ($firstBatch->getResponses() as $response) {
+            $annotation = $response->getFullTextAnnotation();
+            $planText = $annotation->getText();
+            $pieces = $this->explode($planText);
+
+            foreach($pieces as $piece){
+                $insertData = [
+                    'info' => $piece,
+                    'file_id' => 1,
+                ];
+
+                Estate::create($insertData);
+
+            }
+        }
+    }
+
+    /**
+     * カッコで区切るよ
+     */
+    private function explode($text)
+    {
+        $pattern = '/(【|\(|\n|\[|「)第/u';
+        $pieces =  preg_split($pattern ,$text);
+        return $pieces;
+    }
+
 }
