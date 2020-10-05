@@ -19,5 +19,7 @@ Route::get('/', 'TopController@index')->name('index');
 // Route::get('/file/convert', 'FileController@convert')->name('file.convert');
 Route::get('/file/read', 'FileController@read')->name('file.read');
 
+Route::get('/list', 'TopController@list')->name('list');
+
 
 // Route::get('/file/insert', 'FileController@insert')->name('file.insert');
