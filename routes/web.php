@@ -23,3 +23,5 @@ Route::get('/list', 'TopController@list')->name('list');
 
 
 // Route::get('/file/insert', 'FileController@insert')->name('file.insert');
+
+Route::get('/image/transform', 'ImageController@transform')->name('image.transform');

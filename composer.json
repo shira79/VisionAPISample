@@ -13,7 +13,9 @@
         "google/cloud-storage": "^1.23",
         "google/cloud-vision": "^1.2",
         "laravel/framework": "^6.18.35",
-        "laravel/tinker": "^2.0"
+        "laravel/tinker": "^2.0",
+        "setasign/fpdi-tcpdf": "^2.3",
+        "tecnickcom/tcpdf": "^6.3"
     },
     "require-dev": {
         "facade/ignition": "^1.4",
