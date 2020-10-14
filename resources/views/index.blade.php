@@ -1,14 +1,7 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+@extends('layouts.app')
+@section('content')
+        <!-- <div><a href="/file/convert">convert</a></div> -->
+        <div><a href="/file/read">read</a></div>
+        <div><a href="/file/rotate">rotate</a></div>
+@endsection
 
-        <title>test</title>
-    </head>
-    <body>
-        sample
-        <!-- <a href="/file/convert">convert</a> -->
-        <a href="/file/read">read</a></a>
-    </body>
-</html>
