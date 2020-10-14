@@ -4,53 +4,50 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use TCPDF;
-use \setasign\Fpdi\Tcpdf\Fpdi;
+// use TCPDF;
+// use \setasign\Fpdi\Tcpdf\Fpdi;
+use App\Http\Extentions\Myfpdi;
 
 class ImageController extends Controller
 {
+    public $extention =  '.pdf';
+    public $storePath = '/pdfs';
 
-    public function __construct()
-   {
-   }
-
-    //画像をアップ
     public function upload()
     {
+        return view('file.upload');
+    }
+    //画像を回転
+    public function rotate(Request $request)
+    {
+        $data = $request->all();
+        $fileName = time().$this->extention;
+        //todo 時間とユーザーによって与えられた文字列によってで名前を作る
+
+        $request->file->storeAs($this->storePath, $fileName);
+        $filePath = storage_path() . '/app' . $this->storePath .'/' . $fileName;
+
+        $this->rotatePdf($filePath,$data['angle']);
+
     }
 
-    //画像を変換
-    public function transform()
+    private function rotatePdf($filePath,$angle)
     {
-        $this->getPdf();
-    }
 
-    //変換した画像をダウンロード
-    public function download()
-    {
-    }
-
-
-    private function getPdf()
-    {
-        $basePdf = '/File/doc2.pdf';
-
-        $fpdi = new Fpdi();
+        $pdf = new Myfpdi();
         // ページを追加
-        $pageNum = $fpdi->setSourceFile(base_path() .$basePdf);
+        // $pageNum = $pdf->setSourceFile(base_path() .$basePdf);
+        $pageNum = $pdf->setSourceFile($filePath);
 
         for($i = 1; $i < $pageNum+1; $i++){
-            $importPage = $fpdi->importPage($i);
-            $fpdi->addPage();
-            $fpdi->useTemplate($importPage, 0, 0);
+            $importPage = $pdf->importPage($i);
+            $pdf->addPage();
+            $pdf->Rotate($angle);
+            $pdf->useTemplate($importPage, 0, 0);
         }
 
-        $fpdi->Output(sprintf("test_%s.pdf", time()));
+        return $pdf->Output(null,'I');
 
     }
-
-    public function downloadPdf()
-   {
-   }
 
 }
