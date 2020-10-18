@@ -1,11 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\File;
+namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Estate;
-
 use Illuminate\Support\Str;
 use Google\Cloud\Storage\StorageClient;
 use Google\Cloud\Vision\V1\AnnotateFileResponse;
@@ -17,11 +16,21 @@ use Google\Cloud\Vision\V1\GcsSource;
 use Google\Cloud\Vision\V1\ImageAnnotatorClient;
 use Google\Cloud\Vision\V1\InputConfig;
 use Google\Cloud\Vision\V1\OutputConfig;
+use \setasign\Fpdi\Tcpdf\Fpdi;
 
 
 
-class OcrController extends Controller
+class FileController extends Controller
 {
+
+    /** 拡張子*/
+    public $extention =  '.pdf';
+    /** オリジナルのファイルの保存パス*/
+    public $originalStorePath = '/original';
+    /** 回転後ファイルの保存パス**/
+    public $rotatedStorePath = '/rotated';
+
+    /** バケット名**/
     public $bucketName = 'realestate-info';
 
     public $bucketPrefix =  'rotateOutput4/';
@@ -31,21 +40,54 @@ class OcrController extends Controller
     }
 
     /**
-     * バケットの中身を一覧で見るみたいな機能
+     * バケットの中身を一覧で見るみたいな機能 + ファイル
      */
-    public function index()
+    public function form()
     {
-        //return view
+        return view('file.form');
     }
 
     /**
-     * pfdファイルをGCSにアップロード
+     * pfdファイルをアップロード
      */
-    public function upload()
+    public function upload(Request $request)
     {
-        $filePath = '';
+        $filePath =  $this->rotate($request);
         $bucket = $this->getBucket();
-        $bucket->upload(fopen(storage_path('text/test.txt'), 'r'));
+        $bucket->upload(fopen($filePath, 'r'));
+        return 'ファイルをGCSに送信しました';
+    }
+
+    /**
+     * 回転する処理
+    */
+    private function rotate($request)
+    {
+        $data = $request->all();
+        $fileName = time().$this->extention;
+        //todo 時間とユーザーによって与えられた文字列によってで名前を作る
+
+        $request->file->storeAs($this->originalStorePath, $fileName);
+        //オリジナルのファイルを保存
+
+        $originalFilePath = storage_path() . '/app' . $this->originalStorePath .'/' . $fileName;
+        //オリジナルのファイルを保存
+        //ファイルの回転が終わったら削除してもいいかも。
+
+        $pdf = new Fpdi();
+        $pageNum = $pdf->setSourceFile($originalFilePath);
+
+        for($i = 1; $i < $pageNum+1; $i++){
+            $importPage = $pdf->importPage($i);
+            $pdf->addPage();
+            $pdf->Rotate($data['angle']);
+            $pdf->useTemplate($importPage, 0, 0);
+        }
+
+        $rotatedFilePath = storage_path() . '/app' . $this->rotatedStorePath .'/' . $fileName;
+        $pdf->Output($rotatedFilePath,'F');
+        //Fでディレクトリに保存。その後gcsアップロードにつなげる。
+        return $rotatedFilePath;
     }
 
     /**

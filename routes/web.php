@@ -15,12 +15,8 @@
 Route::get('/', 'TopController@index')->name('index');
 Route::get('/list', 'TopController@list')->name('list');
 
-//OCR関連
-
-Route::get('/file/upload', 'File\OcrController@upload')->name('file.upload');
-Route::get('/file/convert', 'File\OcrController@convert')->name('file.convert');
-Route::get('/file/read', 'File\OcrController@read')->name('file.read');
-
-//pdf回転
-Route::get('/file/edit', 'File\RotateController@edit')->name('file.edit');
-Route::post('/file/rotate', 'File\RotateController@rotate')->name('file.rotate');
+//ファイル関連
+Route::get('/file/form', 'FileController@form')->name('file.form');
+Route::post('/file/upload', 'FileController@upload')->name('file.upload');
+Route::get('/file/convert', 'FileController@convert')->name('file.convert');
+Route::get('/file/read', 'FileController@read')->name('file.read');
