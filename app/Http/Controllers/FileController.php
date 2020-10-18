@@ -35,8 +35,6 @@ class FileController extends Controller
     /** バケット名**/
     public $bucketName = 'realestate-info';
 
-    // public $bucketPrefix =  'rotateOutput4/';
-
     public function __construct(){
         //repositoryでazureとgcpを切り替えたい
     }
@@ -63,12 +61,13 @@ class FileController extends Controller
      */
     public function upload(Request $request)
     {
-        $fileData =  $this->rotate($request);
+        $this->rotate($request);
+        $path = $request->session()->get("path");
         $bucket = $this->getBucket();
-        $bucket->upload(fopen($fileData['path'], 'r'));
-        print ('ファイルをGCSに送信しました');
-        $this->convert($fileData);
-        $this->read($fileData);
+        $bucket->upload(fopen($path, 'r'));
+
+        return redirect('/file/upload/check');
+        // $this->read($fileData);
     }
 
     /**
@@ -101,29 +100,46 @@ class FileController extends Controller
         $rotatedFilePath = storage_path() . '/app' . $this->rotatedStorePath .'/' . $fileName;
         $pdf->Output($rotatedFilePath,'F');
         //strageに保存
-        // $pdf->Output($fileName,'D');
-        //ローカルへ強制的に保存させる
-        print ('ここで落としたPDFファイルをupload + convertしていいかの確認をとる。');
-        $ret = [
-            'path' => $rotatedFilePath,
-            'name' => $fileName,
-            'time' => $unixTime,
-        ];
-        return $ret;
+
+        $request->session()->put("path", $rotatedFilePath);
+        $request->session()->put("name", $fileName);
+        $request->session()->put("time", $unixTime);
+        //セッションに書き込む
+    }
+
+    public function uploadCheck(Request $request)
+    {
+        return view('file.check.upload');
+    }
+
+    public function uploadCancel(Request $request)
+    {
+        //まずローカルのファイルを消す。
+        //GCSにアップしたファイルを削除する
+        //セッションを削除する
+        return view('file.cancel.upload');
+    }
+
+    public function uploadResult(Request $request){
+        if(empty($path = $request->session()->get("path"))){
+            return redirect('/');
+        }
+
+        $headers = ['Content-disposition' => 'inline;'];
+        return response()->file($path, $headers);
     }
 
     /**
      * pdfファイルをOCRにかけて、データをGCSに配置する
      */
-    private function convert($fileData)
+    public function convert(Request $request)
     {
-        print ('OCRにかけていいか確認する');
-        // $path = 'gs://realestate-info//doc7.pdf';
-        // $output = 'gs://realestate-info/rotateOutput4/';
-        $path = $this->gcsPathPrefix . $this->bucketName . '/' . $fileData['name'];
-        $output = $this->gcsPathPrefix . $this->bucketName . '/' . $fileData['time'] . '/';
+        $fileName = $request->session()->get("name");
+        $fileTime = $request->session()->get("time");
+        $path = $this->gcsPathPrefix . $this->bucketName . '/' . $fileName;
+        $output = $this->gcsPathPrefix . $this->bucketName . '/' . $fileTime . '/';
 
-          # select ocr feature
+        # select ocr feature
         $feature = (new Feature())
         ->setType(Type::DOCUMENT_TEXT_DETECTION);
 
@@ -159,47 +175,77 @@ class FileController extends Controller
         $operation->pollUntilComplete();
 
         $imageAnnotator->close();
+
+        //todo ここでファイル情報をDBに挿入する。
+
+        return redirect('/file/convert/check');
     }
 
+    public function convertCheck()
+    {
+        return view('file.check.convert');
+    }
+
+    public function convertResult(Request $request)
+    {
+        $fileTime = $request->session()->get("time");
+        $this->read($fileTime,'check');
+
+    }
+
+    public function convertCancel(Request $request)
+    {
+        //まずローカルのファイルを消す。
+        //GCSにアップしたファイルを削除する。
+        //別にわざわざ消さなくていいかな。
+        //セッションを削除する
+        return view('file.cancel.convert');
+    }
+
+        public function insert(Request $request)
+    {
+        //todo 同じファイルが読み込まれないようにする
+        $fileTime = $request->session()->get("time");
+        $this->read($fileTime,'insert');
+        //todo セッションを削除する
+        return redirect('/list');
+    }
 
     /**
      * GCSに置いてあるファイルを読み込む
      */
-    public function read($fileData)
+    public function read($fileTime, $dest)
     {
-        print ('readを始めます');
         $bucket =  $this->getBucket();
-        $options = ['prefix' => $fileData['time'].'/'];
+        $options = ['prefix' => $fileTime.'/'];
         $objects = $bucket->objects($options);
 
         foreach($objects as $object){
-            $this->storeInfo($object);
-        }
+            $jsonString = $object->downloadAsString();
+            $firstBatch = new AnnotateFileResponse();
+            $firstBatch->mergeFromJsonString($jsonString);
 
-    }
+            foreach ($firstBatch->getResponses() as $response) {
+                $annotation = $response->getFullTextAnnotation();
+                $planText = $annotation->getText();
+                $pieces = $this->explode($planText);
 
-    private function storeInfo($object)
-    {
-        $jsonString = $object->downloadAsString();
-        $firstBatch = new AnnotateFileResponse();
-        $firstBatch->mergeFromJsonString($jsonString);
+                foreach($pieces as $piece){
+                    $insertData = [
+                        'info' => $piece,
+                        'file_id' => 1,
+                    ];
 
-        foreach ($firstBatch->getResponses() as $response) {
-            $annotation = $response->getFullTextAnnotation();
-            $planText = $annotation->getText();
-            $pieces = $this->explode($planText);
+                    if($dest === 'check'){
+                         dump($piece);
+                    }elseif ($dest === 'insert'){
+                        Estate::create($insertData);
+                    }
 
-            foreach($pieces as $piece){
-                $insertData = [
-                    'info' => $piece,
-                    'file_id' => 1,
-                ];
-
-                // dump($piece);
-                Estate::create($insertData);
-
+                }
             }
         }
+
     }
 
     /**
