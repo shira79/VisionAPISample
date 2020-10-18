@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\File;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -20,19 +20,41 @@ use Google\Cloud\Vision\V1\OutputConfig;
 
 
 
-class FileController extends Controller
+class OcrController extends Controller
 {
     public $bucketName = 'realestate-info';
-    public $bucketPrefix =  'outputs2/';
+
+    public $bucketPrefix =  'rotateOutput4/';
+
+    public function __construct(){
+        //repositoryでazureとgcpを切り替えたい
+    }
+
+    /**
+     * バケットの中身を一覧で見るみたいな機能
+     */
+    public function index()
+    {
+        //return view
+    }
+
+    /**
+     * pfdファイルをGCSにアップロード
+     */
+    public function upload()
+    {
+        $filePath = '';
+        $bucket = $this->getBucket();
+        $bucket->upload(fopen(storage_path('text/test.txt'), 'r'));
+    }
 
     /**
      * pdfファイルをOCRにかけて、データをGCSに配置する
      */
     public function convert()
     {
-        // dd('gs:/'.base_path().'/File/doc.pdf');
-        $path = 'gs://realestate-info//doc.pdf';
-        $output = 'gs://realestate-info/outputs3/';
+        $path = 'gs://realestate-info//doc7.pdf';
+        $output = 'gs://realestate-info/rotateOutput4/';
           # select ocr feature
         $feature = (new Feature())
         ->setType(Type::DOCUMENT_TEXT_DETECTION);
@@ -75,15 +97,16 @@ class FileController extends Controller
     /**
      * GCSに置いてあるファイルを読み込む
      */
-    // public function read()
-    // {
-    //     $objects = $this->getObjects();
+    public function read()
+    {
+        $objects = $this->getObjects();
 
-    //     foreach($objects as $object){
-    //         $this->getPlaneText($object);
-    //     }
+        foreach($objects as $object){
+            $this->storeInfo($object);
+            // $this->getPlaneText($object);
+        }
 
-    // }
+    }
 
     public function insert()
     {
@@ -115,6 +138,7 @@ class FileController extends Controller
         $firstBatch = new AnnotateFileResponse();
         $firstBatch->mergeFromJsonString($jsonString);
 
+        // dump($this->bucketPrefix);
         foreach ($firstBatch->getResponses() as $response) {
             $annotation = $response->getFullTextAnnotation();
             $planText = $annotation->getText();
@@ -126,6 +150,7 @@ class FileController extends Controller
                     'file_id' => 1,
                 ];
 
+                // dump($piece);
                 Estate::create($insertData);
 
             }

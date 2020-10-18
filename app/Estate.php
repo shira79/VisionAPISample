@@ -8,11 +8,6 @@ class Estate extends Model
 {
     protected $fillable = ['id','file_id','info','sent_at'];
 
-    public function scopePaginate($query)
-    {
-        return $query->paginate();
-    }
-
     public function scopeSearch($query,$conditions)
     {
 
