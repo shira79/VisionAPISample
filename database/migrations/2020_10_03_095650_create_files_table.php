@@ -18,6 +18,7 @@ class CreateFilesTable extends Migration
             $table->string('name');
             $table->char('year', 4);
             $table->char('month', 2);
+            $table->dateTime('read_at')->nullable();
             $table->timestamps();
         });
     }

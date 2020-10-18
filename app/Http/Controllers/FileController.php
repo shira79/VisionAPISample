@@ -23,39 +23,52 @@ use \setasign\Fpdi\Tcpdf\Fpdi;
 class FileController extends Controller
 {
 
+    //todo ここら辺全部定数だから大文字にする
     /** 拡張子*/
     public $extention =  '.pdf';
     /** オリジナルのファイルの保存パス*/
     public $originalStorePath = '/original';
     /** 回転後ファイルの保存パス**/
     public $rotatedStorePath = '/rotated';
-
+    /** GCSのpathのプレフィックス*/
+    public $gcsPathPrefix = 'gs://';
     /** バケット名**/
     public $bucketName = 'realestate-info';
 
-    public $bucketPrefix =  'rotateOutput4/';
+    // public $bucketPrefix =  'rotateOutput4/';
 
     public function __construct(){
         //repositoryでazureとgcpを切り替えたい
     }
 
+    private function getBucket()
+    {
+        $storage = new StorageClient();
+        return $storage->bucket($this->bucketName);
+    }
+
     /**
-     * バケットの中身を一覧で見るみたいな機能 + ファイル
+     * ファイルアップロードのためのフォーム
      */
     public function form()
     {
+        //ファイル名をユーザーが決めれるようにしたい
+        //今は現unixのtimestampでやってる
+        //あと何年何月のデータか
         return view('file.form');
     }
 
     /**
-     * pfdファイルをアップロード
+     * pfdファイルをもっといい感じの名前にする
      */
     public function upload(Request $request)
     {
-        $filePath =  $this->rotate($request);
+        $fileData =  $this->rotate($request);
         $bucket = $this->getBucket();
-        $bucket->upload(fopen($filePath, 'r'));
-        return 'ファイルをGCSに送信しました';
+        $bucket->upload(fopen($fileData['path'], 'r'));
+        print ('ファイルをGCSに送信しました');
+        $this->convert($fileData);
+        $this->read($fileData);
     }
 
     /**
@@ -64,7 +77,8 @@ class FileController extends Controller
     private function rotate($request)
     {
         $data = $request->all();
-        $fileName = time().$this->extention;
+        $unixTime = time();
+        $fileName = $unixTime.$this->extention;
         //todo 時間とユーザーによって与えられた文字列によってで名前を作る
 
         $request->file->storeAs($this->originalStorePath, $fileName);
@@ -86,17 +100,29 @@ class FileController extends Controller
 
         $rotatedFilePath = storage_path() . '/app' . $this->rotatedStorePath .'/' . $fileName;
         $pdf->Output($rotatedFilePath,'F');
-        //Fでディレクトリに保存。その後gcsアップロードにつなげる。
-        return $rotatedFilePath;
+        //strageに保存
+        // $pdf->Output($fileName,'D');
+        //ローカルへ強制的に保存させる
+        print ('ここで落としたPDFファイルをupload + convertしていいかの確認をとる。');
+        $ret = [
+            'path' => $rotatedFilePath,
+            'name' => $fileName,
+            'time' => $unixTime,
+        ];
+        return $ret;
     }
 
     /**
      * pdfファイルをOCRにかけて、データをGCSに配置する
      */
-    public function convert()
+    private function convert($fileData)
     {
-        $path = 'gs://realestate-info//doc7.pdf';
-        $output = 'gs://realestate-info/rotateOutput4/';
+        print ('OCRにかけていいか確認する');
+        // $path = 'gs://realestate-info//doc7.pdf';
+        // $output = 'gs://realestate-info/rotateOutput4/';
+        $path = $this->gcsPathPrefix . $this->bucketName . '/' . $fileData['name'];
+        $output = $this->gcsPathPrefix . $this->bucketName . '/' . $fileData['time'] . '/';
+
           # select ocr feature
         $feature = (new Feature())
         ->setType(Type::DOCUMENT_TEXT_DETECTION);
@@ -139,39 +165,17 @@ class FileController extends Controller
     /**
      * GCSに置いてあるファイルを読み込む
      */
-    public function read()
+    public function read($fileData)
     {
-        $objects = $this->getObjects();
+        print ('readを始めます');
+        $bucket =  $this->getBucket();
+        $options = ['prefix' => $fileData['time'].'/'];
+        $objects = $bucket->objects($options);
 
         foreach($objects as $object){
             $this->storeInfo($object);
-            // $this->getPlaneText($object);
         }
 
-    }
-
-    public function insert()
-    {
-        $objects = $this->getObjects();
-
-        foreach ($objects as $obj){
-            // $object->name();
-            $this->storeInfo($obj);
-        }
-
-    }
-
-    private function getBucket()
-    {
-        $storage = new StorageClient();
-        return $storage->bucket($this->bucketName);
-    }
-
-    private function getObjects()
-    {
-        $bucket =  $this->getBucket();
-        $options = ['prefix' => $this->bucketPrefix];
-        return $bucket->objects($options);
     }
 
     private function storeInfo($object)
@@ -180,7 +184,6 @@ class FileController extends Controller
         $firstBatch = new AnnotateFileResponse();
         $firstBatch->mergeFromJsonString($jsonString);
 
-        // dump($this->bucketPrefix);
         foreach ($firstBatch->getResponses() as $response) {
             $annotation = $response->getFullTextAnnotation();
             $planText = $annotation->getText();
@@ -204,7 +207,8 @@ class FileController extends Controller
      */
     private function explode($text)
     {
-        $pattern = '/(【|\(|\n|\[|「)第/u';
+        $pattern = '/(【|\(|\n|\[|「|1)第/u';
+        //最終的にここをDBにいれる
         $pieces =  preg_split($pattern ,$text);
         return $pieces;
     }
