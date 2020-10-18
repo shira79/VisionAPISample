@@ -116,7 +116,7 @@ class FileController extends Controller
     {
         //まずローカルのファイルを消す。
         //GCSにアップしたファイルを削除する
-        //セッションを削除する
+        $this->forgetSession($request);
         return view('file.cancel.upload');
     }
 
@@ -198,7 +198,7 @@ class FileController extends Controller
         //まずローカルのファイルを消す。
         //GCSにアップしたファイルを削除する。
         //別にわざわざ消さなくていいかな。
-        //セッションを削除する
+        $this->forgetSession($request);
         return view('file.cancel.convert');
     }
 
@@ -207,7 +207,6 @@ class FileController extends Controller
         //todo 同じファイルが読み込まれないようにする
         $fileTime = $request->session()->get("time");
         $this->read($fileTime,'insert');
-        //todo セッションを削除する
         return redirect('/list');
     }
 
