@@ -17,6 +17,7 @@ use Google\Cloud\Vision\V1\ImageAnnotatorClient;
 use Google\Cloud\Vision\V1\InputConfig;
 use Google\Cloud\Vision\V1\OutputConfig;
 use \setasign\Fpdi\Tcpdf\Fpdi;
+use \setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException;
 
 
 
@@ -30,14 +31,12 @@ class FileController extends Controller
     public $originalStorePath = '/original';
     /** 回転後ファイルの保存パス**/
     public $rotatedStorePath = '/rotated';
+    /** 圧縮解除ファイルの保存パス**/
+    public $uncompressedStorePath = '/uncompressed';
     /** GCSのpathのプレフィックス*/
     public $gcsPathPrefix = 'gs://';
-    /** バケット名**/
+    /** バケット名**/ //todo .envで管理する
     public $bucketName = 'realestate-info';
-
-    public function __construct(){
-        //repositoryでazureとgcpを切り替えたい
-    }
 
     private function getBucket()
     {
@@ -61,6 +60,9 @@ class FileController extends Controller
      */
     public function upload(Request $request)
     {
+        //todo storage下のディレクトリがなかったら作る
+//        $this->initDir();
+
         $this->rotate($request);
         $path = $request->session()->get("path");
         $bucket = $this->getBucket();
@@ -88,7 +90,15 @@ class FileController extends Controller
         //ファイルの回転が終わったら削除してもいいかも。
 
         $pdf = new Fpdi();
-        $pageNum = $pdf->setSourceFile($originalFilePath);
+        try {
+            $pageNum = $pdf->setSourceFile($originalFilePath);
+        } catch (CrossReferenceException $e) {
+            //エラーを吐いたら圧縮処理をかける
+            $uncompressedFilePath = $this->uncompress($originalFilePath,$fileName);
+//            throw $e;
+            $pageNum = $pdf->setSourceFile($uncompressedFilePath);
+        }
+
 
         for($i = 1; $i < $pageNum+1; $i++){
             $importPage = $pdf->importPage($i);
@@ -105,6 +115,17 @@ class FileController extends Controller
         $request->session()->put("name", $fileName);
         $request->session()->put("time", $unixTime);
         //セッションに書き込む
+    }
+
+    /**
+     * 圧縮を解除
+     */
+    private function uncompress($originalFilePath,$fileName)
+    {
+        //qpdf --force-version=1.4 template.pdf uncompressed.pdf
+        $uncompressedFilePath = storage_path() . '/app' . $this->uncompressedStorePath .'/' . $fileName;
+        exec('qpdf --force-version=1.4 '. $originalFilePath .' ' . $uncompressedFilePath);
+        return $uncompressedFilePath;
     }
 
     public function uploadCheck(Request $request)
@@ -188,6 +209,9 @@ class FileController extends Controller
 
     public function convertResult(Request $request)
     {
+        if(empty($path = $request->session()->get("time"))){
+            return redirect('/');
+        }
         $fileTime = $request->session()->get("time");
         $this->read($fileTime,'check');
 
