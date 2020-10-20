@@ -16,16 +16,16 @@ Route::get('/', 'TopController@index')->name('index');
 Route::get('/list', 'TopController@list')->name('list');
 
 //ファイル関連
-Route::get('/file/form', 'FileController@form')->name('file.form');
+Route::get('/file/form', 'File\UploadController@form')->name('file.form');
 //アップロード
-Route::post('/file/upload', 'FileController@upload')->name('file.upload');
-Route::get('/file/upload/check', 'FileController@uploadCheck')->name('file.upload.check');
-Route::get('/file/upload/result', 'FileController@uploadResult')->name('file.upload.result');
-Route::get('/file/upload/cancel', 'FileController@uploadCancel')->name('file.upload.cancel');
+Route::post('/file/upload', 'File\UploadController@upload')->name('file.upload');
+Route::get('/file/upload/check', 'File\UploadController@check')->name('file.upload.check');
+Route::get('/file/upload/result', 'File\UploadController@result')->name('file.upload.result');
+Route::get('/file/upload/cancel', 'File\UploadController@cancel')->name('file.upload.cancel');
 //OCR変換
-Route::get('/file/convert', 'FileController@convert')->name('file.convert');
-Route::get('/file/convert/check', 'FileController@convertCheck')->name('file.convert.check');
-Route::get('/file/convert/result', 'FileController@convertResult')->name('file.convert.result');
-Route::get('/file/convert/cancel', 'FileController@convertCancel')->name('file.convert.cancel');
+Route::get('/file/convert', 'File\ConvertController@convert')->name('file.convert');
+Route::get('/file/convert/check', 'File\ConvertController@check')->name('file.convert.check');
+Route::get('/file/convert/result', 'File\ConvertController@result')->name('file.convert.result');
+Route::get('/file/convert/cancel', 'File\ConvertController@cancel')->name('file.convert.cancel');
 //データ挿入
-Route::get('/file/insert', 'FileController@insert')->name('file.insert');
+Route::get('/file/insert', 'File\InsertController@insert')->name('file.insert');
