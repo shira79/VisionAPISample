@@ -63,8 +63,6 @@ class ConvertController extends FileBaseController
 
         $imageAnnotator->close();
 
-        //todo ここでファイル情報をDBに挿入する。
-
         return redirect('/file/convert/check');
     }
 

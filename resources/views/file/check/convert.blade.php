@@ -12,14 +12,33 @@
 
         <div>
             OCR結果をデータベースに入れてもいいですか？？？？
+            formにデータを入れてくださいね。
             <div>
-                <button>
-                    <a href="/file/insert">はい</a>
-                </button>
-                <button>
-                    <a href="/file/convert/cancel">いいえ</a>
-                </button>
+                <div class="input-group">
+                    <form action="/file/insert" method="POST">
+                        @csrf
+                        <div>
+                            <input type="month" name="month">何年何月のデータですか
+                        </div>
+                        <div>
+                            <input type="text" name="name" placeholder="ファイルの識別名">
+                        </div>
+
+                        <div>
+
+                            <div>
+                                <button type="submit">submit</button>
+                            </div>
+                            <button>
+                                <a href="/file/convert/cancel">いいえ</a>
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
+
+
+
         </div>
     </div>
 

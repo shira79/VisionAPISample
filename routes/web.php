@@ -28,4 +28,4 @@ Route::get('/file/convert/check', 'File\ConvertController@check')->name('file.co
 Route::get('/file/convert/result', 'File\ConvertController@result')->name('file.convert.result');
 Route::get('/file/convert/cancel', 'File\ConvertController@cancel')->name('file.convert.cancel');
 //データ挿入
-Route::get('/file/insert', 'File\InsertController@insert')->name('file.insert');
+Route::post('/file/insert', 'File\InsertController@insert')->name('file.insert');
