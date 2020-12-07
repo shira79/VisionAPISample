@@ -17,7 +17,7 @@ class CreateEstatesTable extends Migration
             $table->bigIncrements('id');
             $table->text('info');
             $table->bigInteger('file_id')->unsigned();
-            $table->dateTime('sent_at')->nullable();
+            $table->char('status_code', 2);
             $table->timestamps();
 
             $table->foreign('file_id')->references('id')->on('files');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\File;
 use Illuminate\Http\Request;
 use App\File;
 use App\Estate;
+use App\Defs\DefStatus;
 
 class InsertController extends FileBaseController
 {
@@ -28,6 +29,7 @@ class InsertController extends FileBaseController
             $estateData = [
                 'info' => $estate,
                 'file_id' => $file->id,
+                'status_code' => DefStatus::UNPROCESSED_STATUS_CODE
             ];
             Estate::create($estateData);
         }

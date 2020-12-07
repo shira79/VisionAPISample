@@ -3,10 +3,11 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Defs\DefStatus;
 
 class Estate extends Model
 {
-    protected $fillable = ['id','file_id','info','sent_at'];
+    protected $fillable = ['id','file_id','info','status_code'];
 
     public function scopeSearch($query,$conditions)
     {
@@ -27,4 +28,8 @@ class Estate extends Model
         return $pieces;
     }
 
+    public function getStatusNameAttribute()
+    {
+        return DefStatus::getStatusName($this->status_code);
+    }
 }

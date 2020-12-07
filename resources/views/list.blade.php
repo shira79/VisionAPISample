@@ -25,7 +25,7 @@
                         <th scope="col">id</th>
                         <th scope="col">file_id</th>
                         <th scope="col">info</th>
-                        <th scope="col">sent_at</th>
+                        <th scope="col">status_name</th>
                     </tr>
                 </thead>
                 @foreach($estates as $estate)
@@ -34,7 +34,7 @@
                             <th scope="row">{{$estate->id}}</th>
                             <td>{{$estate->file_id}}</td>
                             <td>{{$estate->info}}</td>
-                            <td>{{$estate->sent_at}}</td>
+                            <td>{{$estate->status_name}}</td>
                         </tr>
                     </tbody>
             @endforeach
